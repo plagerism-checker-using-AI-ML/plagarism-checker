@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Upload, FileText, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,16 +20,111 @@ export function FakeDataDetection() {
   const [showResults, setShowResults] = useState(false)
   const [pdfUrl, setPdfUrl] = useState("")
   const [dragActive, setDragActive] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [error, setError] = useState("")
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [fakeDataResults, setFakeDataResults] = useState<any>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError("")
 
-    // Simulate API call
-    setTimeout(() => {
+    if (selectedFile) {
+      await uploadFile(selectedFile)
+    } else if (pdfUrl) {
+      // Simulate API call for URL
+      setTimeout(() => {
+        setIsLoading(false)
+        setShowResults(true)
+      }, 3000)
+    } else {
+      setError("Please upload a file or enter a PDF URL")
       setIsLoading(false)
-      setShowResults(true)
-    }, 3000)
+    }
+  }
+
+  const uploadFile = async (file: File) => {
+    try {
+      // First, save the file to public directory
+      const formData = new FormData()
+      formData.append("file", file)
+      
+      // Save to public directory
+      const saveResponse = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!saveResponse.ok) {
+        throw new Error(`Failed to save file: ${saveResponse.status}`)
+      }
+
+      const { filePath } = await saveResponse.json()
+      console.log("File saved to:", filePath)
+
+      // Create detailed simulated results
+      setFakeDataResults({
+        document_title: file.name,
+        file_path: filePath,
+        analysis_date: new Date().toISOString(),
+        submission_id: `FD-${Date.now().toString().substring(5)}`,
+        overall_score: 0.76, // Higher scores indicate higher likelihood of fake data
+        total_pages: 12,
+        analyzed_sections: 8,
+        high_risk_sections: 3,
+        ai_detection_probability: 0.82,
+        data_fabrication_indicators: [
+          {
+            type: "Statistical Anomalies",
+            score: 0.87,
+            description: "Unusual distribution patterns in reported data values",
+            affected_sections: ["Results", "Data Tables", "Appendix B"],
+            evidence: "Z-score distribution outside expected parameters (p < 0.001)",
+            confidence: "High"
+          },
+          {
+            type: "Identical Data Patterns",
+            score: 0.65,
+            description: "Repeated digit patterns indicating potential data fabrication",
+            affected_sections: ["Table 4", "Figure 7"],
+            evidence: "Terminal digit analysis reveals non-random distribution",
+            confidence: "Medium"
+          },
+          {
+            type: "Inconsistent Methodology",
+            score: 0.71,
+            description: "Reported methods cannot produce the claimed results",
+            affected_sections: ["Methodology", "Results"],
+            evidence: "Statistical power insufficient for claimed significance levels",
+            confidence: "High"
+          },
+          {
+            type: "AI Text Generation Markers",
+            score: 0.89,
+            description: "Text exhibits characteristics of AI-generated content",
+            affected_sections: ["Discussion", "Conclusion"],
+            evidence: "Stylistic consistency analysis indicates non-human authorship",
+            confidence: "Very High"
+          }
+        ],
+        visualized_data: {
+          risk_scores: [0.87, 0.65, 0.71, 0.89],
+          section_analysis: [0.3, 0.4, 0.9, 0.8, 0.7, 0.9, 0.4, 0.3],
+          confidence_metrics: [0.85, 0.62, 0.78, 0.91]
+        }
+      })
+
+      // Show results after short delay to simulate processing
+      setTimeout(() => {
+        setIsLoading(false)
+        setShowResults(true)
+      }, 2000)
+    } catch (err) {
+      console.error("Error uploading file:", err)
+      setError(`Error: ${err instanceof Error ? err.message : "Failed to upload file"}`)
+      setIsLoading(false)
+    }
   }
 
   const handleDrag = (e: React.DragEvent) => {
@@ -47,9 +142,22 @@ export function FakeDataDetection() {
     e.stopPropagation()
     setDragActive(false)
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      // Handle the file
-      console.log("File dropped:", e.dataTransfer.files[0])
+      const file = e.dataTransfer.files[0]
+      setSelectedFile(file)
+      console.log("File dropped:", file)
     }
+  }
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0]
+      setSelectedFile(file)
+      console.log("File selected:", file)
+    }
+  }
+
+  const handleFileButtonClick = () => {
+    fileInputRef.current?.click()
   }
 
   if (isLoading) {
@@ -57,7 +165,7 @@ export function FakeDataDetection() {
   }
 
   if (showResults) {
-    return <FakeDataResults />
+    return <FakeDataResults data={fakeDataResults} />
   }
 
   return (
@@ -104,13 +212,31 @@ export function FakeDataDetection() {
                   <p className="text-sm text-muted-foreground mb-6 max-w-md">
                     Supported formats: PDF, DOCX, TXT (max 10MB)
                   </p>
-                  <Button type="button" size="lg" className="relative overflow-hidden group">
+                  <Button 
+                    type="button" 
+                    size="lg" 
+                    className="relative overflow-hidden group"
+                    onClick={handleFileButtonClick}
+                  >
                     <span className="relative z-10 flex items-center">
                       <FileText className="mr-2 h-4 w-4" />
                       Browse Files
                     </span>
                     <span className="absolute inset-0 bg-primary/10 transform translate-y-full group-hover:translate-y-0 transition-transform duration-200"></span>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileInputChange}
+                      className="hidden"
+                      accept=".pdf,.docx,.txt"
+                    />
                   </Button>
+                  {selectedFile && (
+                    <div className="mt-4 text-sm">
+                      <p className="font-medium">Selected file: {selectedFile.name}</p>
+                      <p className="text-muted-foreground">Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                  )}
                 </motion.div>
               </TabsContent>
               <TabsContent value="url" className="space-y-4">
@@ -126,6 +252,7 @@ export function FakeDataDetection() {
                     />
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">Enter a direct link to a PDF document</p>
+                  {error && <p className="text-sm text-destructive mt-1">{error}</p>}
                 </div>
               </TabsContent>
 

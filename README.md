@@ -19,6 +19,10 @@ A FastAPI-based backend service for detecting plagiarism and AI-generated conten
 cd backend
 pip install -r requirements.txt
 python run.py
+
+cd frontend/plagarism-dashboard
+npm install
+npm run dev
 ```
 
 ## API Documentation

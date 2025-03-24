@@ -13,12 +13,17 @@ import { SimilarityMetricsChart } from "@/components/similarity-metrics-chart"
 import { motion } from "framer-motion"
 import { Separator } from "@/components/ui/separator"
 import { DocumentTextHighlight } from "@/components/document-text-highlight"
+import { cn } from "@/lib/utils"
+import { useRouter } from "next/navigation"
+import html2canvas from "html2canvas"
+import jsPDF from "jspdf"
 
 interface PlagiarismResultsProps {
   data: any
 }
 
 export function PlagiarismResults({ data }: PlagiarismResultsProps) {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState("overview")
 
   // Extract data from the API response
@@ -27,6 +32,107 @@ export function PlagiarismResults({ data }: PlagiarismResultsProps) {
   const sources = data?.plagiarism_results || []
   const isAiGenerated = data?.ai_detection_results?.overall_is_ai_generated || false
   const aiProbability = data?.ai_detection_results?.overall_ai_probability || 0
+
+  // Function to handle full report navigation
+  const handleFullReport = () => {
+    // Store data in localStorage
+    localStorage.setItem('reportData', JSON.stringify(data))
+    router.push('/report')
+  }
+
+  // Function to handle printing
+  const handlePrint = () => {
+    // Store data in localStorage
+    localStorage.setItem('reportData', JSON.stringify(data))
+    
+    // Open report in new window and wait for it to load
+    const reportUrl = `${window.location.origin}/report`
+    const printWindow = window.open(reportUrl)
+    
+    // Wait for the window to load and check for data
+    if (printWindow) {
+      const checkData = setInterval(() => {
+        const reportData = printWindow.localStorage.getItem('reportData')
+        if (reportData) {
+          clearInterval(checkData)
+          printWindow.print()
+        }
+      }, 100)
+    }
+  }
+
+  // Function to handle PDF download
+  const handleDownload = async () => {
+    try {
+      // Store data in localStorage
+      localStorage.setItem('reportData', JSON.stringify(data))
+      
+      // Open report in new window
+      const reportUrl = `${window.location.origin}/report`
+      const reportWindow = window.open(reportUrl)
+      
+      // Wait for the window to load and check for data
+      if (reportWindow) {
+        await new Promise<void>((resolve) => {
+          const checkData = setInterval(() => {
+            const reportData = reportWindow.localStorage.getItem('reportData')
+            if (reportData) {
+              clearInterval(checkData)
+              resolve()
+            }
+          }, 100)
+        })
+
+        // Add a small delay to ensure components are rendered
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        // Create PDF
+        const pdf = new jsPDF('p', 'mm', 'a4')
+        const canvas = await html2canvas(reportWindow.document.body)
+        const imgData = canvas.toDataURL('image/png')
+        
+        // Add image to PDF
+        const pdfWidth = pdf.internal.pageSize.getWidth()
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+        
+        // Download PDF
+        pdf.save('plagiarism-report.pdf')
+        
+        // Close the window
+        reportWindow.close()
+      }
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      alert('Error generating PDF. Please try again.')
+    }
+  }
+
+  // Function to handle sharing
+  const handleShare = async () => {
+    // Store data in localStorage
+    localStorage.setItem('reportData', JSON.stringify(data))
+    const reportUrl = `${window.location.origin}/report`
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Plagiarism Analysis Report',
+          text: 'Check out this plagiarism analysis report',
+          url: reportUrl
+        })
+      } catch (error) {
+        console.error('Error sharing:', error)
+        // Fallback to copying to clipboard
+        await navigator.clipboard.writeText(reportUrl)
+        alert('Report URL copied to clipboard!')
+      }
+    } else {
+      // Fallback to copying to clipboard
+      await navigator.clipboard.writeText(reportUrl)
+      alert('Report URL copied to clipboard!')
+    }
+  }
 
   return (
     <motion.div
@@ -42,24 +148,23 @@ export function PlagiarismResults({ data }: PlagiarismResultsProps) {
             <span className="sr-only">Back</span>
           </Button>
           <h2 className="text-2xl font-bold">Analysis Results</h2>
-          <Badge variant={overallScore > 0.3 ? "destructive" : "outline"} className="ml-2">
-            {overallScore > 0.3 ? "High Plagiarism" : "Low Plagiarism"}
+          <Badge 
+            variant={overallScore > 0.5 ? "destructive" : overallScore > 0.3 ? "secondary" : "default"} 
+            className={cn(
+              "ml-2",
+              overallScore <= 0.3 && "bg-green-600 hover:bg-green-700 text-white border-transparent"
+            )}
+          >
+            {overallScore > 0.5 ? "High Plagiarism" : overallScore > 0.3 ? "Medium Plagiarism" : "Low Plagiarism"}
           </Badge>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Share2 className="mr-2 h-4 w-4" />
-            Share
-          </Button>
-          <Button variant="outline" size="sm">
-            <Printer className="mr-2 h-4 w-4" />
-            Print
-          </Button>
-          <Button variant="outline" size="sm">
+      
+          <Button variant="outline" size="sm" onClick={handleDownload}>
             <Download className="mr-2 h-4 w-4" />
             Download
           </Button>
-          <Button size="sm">
+          <Button size="sm" onClick={handleFullReport}>
             <BarChart2 className="mr-2 h-4 w-4" />
             Full Report
           </Button>
@@ -138,8 +243,14 @@ export function PlagiarismResults({ data }: PlagiarismResultsProps) {
                       <div className="pt-2">
                         <h4 className="text-sm font-medium mb-3">Analysis Result</h4>
                         <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant={overallScore > 0.3 ? "destructive" : "outline"} className="px-3 py-1">
-                            {overallScore > 0.3 ? "High Plagiarism Detected" : "Low Plagiarism"}
+                          <Badge 
+                            variant={overallScore > 0.5 ? "destructive" : overallScore > 0.3 ? "secondary" : "default"}
+                            className={cn(
+                              "px-3 py-1",
+                              overallScore <= 0.3 && "bg-green-600 hover:bg-green-700 text-white border-transparent"
+                            )}
+                          >
+                            {overallScore > 0.5 ? "High Plagiarism Detected" : overallScore > 0.3 ? "Medium Plagiarism Detected" : "Low Plagiarism"}
                           </Badge>
                           <Badge variant="secondary" className="px-3 py-1">
                             {isAiGenerated ? "AI-Generated" : "Human-Written"}

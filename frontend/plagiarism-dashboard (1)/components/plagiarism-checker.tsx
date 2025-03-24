@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Upload, FileText, Info } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -28,28 +28,83 @@ export function PlagiarismChecker() {
     fuzzy: 0.7,
   })
   const [dragActive, setDragActive] = useState(false)
-  const [plagiarismData, setPlagiarismData] = useState(null)
+  const [plagiarismData, setPlagiarismData] = useState<any>(null)
   const [error, setError] = useState("")
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
 
-    if (!pdfUrl) {
-      setError("Please enter a PDF URL")
-      setIsLoading(false)
-      return
-    }
+    if (selectedFile) {
+      await uploadFile(selectedFile)
+    } else if (pdfUrl) {
+      try {
+        const response = await fetch("http://localhost:8000/api/check-plagiarism", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            pdf_url: pdfUrl,
+            check_online_sources: checkOnlineSources,
+            num_papers: 5,
+            thresholds: {
+              semantic: thresholds.semantic,
+              ngram: thresholds.ngram,
+              fuzzy: thresholds.fuzzy,
+            },
+          }),
+        })
 
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`)
+        }
+
+        const data = await response.json()
+        setPlagiarismData(data)
+        setIsLoading(false)
+        setShowResults(true)
+      } catch (err) {
+        console.error("Error fetching plagiarism data:", err)
+        setError(`Error: ${err instanceof Error ? err.message : "Failed to check plagiarism"}`)
+        setIsLoading(false)
+      }
+    } else {
+      setError("Please upload a file or enter a PDF URL")
+      setIsLoading(false)
+    }
+  }
+
+  const uploadFile = async (file: File) => {
     try {
+      // First, save the file to public directory
+      const formData = new FormData()
+      formData.append("file", file)
+      
+      // Save to public directory
+      const saveResponse = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!saveResponse.ok) {
+        throw new Error(`Failed to save file: ${saveResponse.status}`)
+      }
+
+      const { filePath } = await saveResponse.json()
+      console.log("File saved to:", filePath)
+
+      // Now make the API request with the same format as URL submission
       const response = await fetch("http://localhost:8000/api/check-plagiarism", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          pdf_url: pdfUrl,
+          pdf_url: `http://localhost:3000${filePath}`,
           check_online_sources: checkOnlineSources,
           num_papers: 5,
           thresholds: {
@@ -69,8 +124,8 @@ export function PlagiarismChecker() {
       setIsLoading(false)
       setShowResults(true)
     } catch (err) {
-      console.error("Error fetching plagiarism data:", err)
-      setError(`Error: ${err instanceof Error ? err.message : "Failed to check plagiarism"}`)
+      console.error("Error uploading file:", err)
+      setError(`Error: ${err instanceof Error ? err.message : "Failed to upload file"}`)
       setIsLoading(false)
     }
   }
@@ -90,9 +145,22 @@ export function PlagiarismChecker() {
     e.stopPropagation()
     setDragActive(false)
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      // Handle the file
-      console.log("File dropped:", e.dataTransfer.files[0])
+      const file = e.dataTransfer.files[0]
+      setSelectedFile(file)
+      console.log("File dropped:", file)
     }
+  }
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0]
+      setSelectedFile(file)
+      console.log("File selected:", file)
+    }
+  }
+
+  const handleFileButtonClick = () => {
+    fileInputRef.current?.click()
   }
 
   if (isLoading) {
@@ -147,13 +215,31 @@ export function PlagiarismChecker() {
                   <p className="text-sm text-muted-foreground mb-6 max-w-md">
                     Supported formats: PDF, DOCX, TXT (max 10MB)
                   </p>
-                  <Button type="button" size="lg" className="relative overflow-hidden group">
+                  <Button 
+                    type="button" 
+                    size="lg" 
+                    className="relative overflow-hidden group"
+                    onClick={handleFileButtonClick}
+                  >
                     <span className="relative z-10 flex items-center">
                       <FileText className="mr-2 h-4 w-4" />
                       Browse Files
                     </span>
                     <span className="absolute inset-0 bg-primary/10 transform translate-y-full group-hover:translate-y-0 transition-transform duration-200"></span>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileInputChange}
+                      className="hidden"
+                      accept=".pdf,.docx,.txt"
+                    />
                   </Button>
+                  {selectedFile && (
+                    <div className="mt-4 text-sm">
+                      <p className="font-medium">Selected file: {selectedFile.name}</p>
+                      <p className="text-muted-foreground">Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                  )}
                 </motion.div>
               </TabsContent>
               <TabsContent value="url" className="space-y-4">
