@@ -1,2 +1,10 @@
 venv/ 
 .venv/ 
+
+**/.env
+
+**/.env.local
+
+**/.env.development
+
+**/.env.production
