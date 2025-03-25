@@ -48,9 +48,7 @@ export function AppSidebar({ activePage }: AppSidebarProps) {
             <SidebarMenuButton asChild={false} isActive={activePage === "plagiarism"} onClick={() => router.push("/")}>
               <FileText className="h-4 w-4" />
               <span>Plagiarism Checker</span>
-              <Badge variant="outline" className="ml-auto py-0 h-5">
-                New
-              </Badge>
+              
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

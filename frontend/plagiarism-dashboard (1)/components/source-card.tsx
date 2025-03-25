@@ -30,22 +30,22 @@ export function SourceCard({ source }: SourceCardProps) {
       <Card className="overflow-hidden border-border/50 hover:border-border transition-colors duration-200">
         <CardHeader className="pb-2">
           <div className="flex items-start gap-3">
-            <div className="rounded-md bg-primary/10 p-2 mt-0.5">
+            <div className="rounded-md bg-primary/10 p-2 mt-0.5 flex-shrink-0">
               <FileText className="h-5 w-5 text-primary" />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0">
               <CardTitle className="text-base">
-                <Button variant="link" className="p-0 h-auto text-base font-semibold justify-start" asChild>
-                  <a href={source.paper_info.link} target="_blank" rel="noopener noreferrer">
+                <Button variant="link" className="p-0 h-auto text-base font-semibold justify-start w-full text-left" asChild>
+                  <a href={source.paper_info.link} target="_blank" rel="noopener noreferrer" className="line-clamp-2">
                     {source.paper_info.title}
                   </a>
                 </Button>
               </CardTitle>
               <CardDescription className="flex items-center flex-wrap gap-2">
-                <span>Source #{source.reference_id}</span>
+                <span className="truncate">Source #{source.reference_id}</span>
                 <span>•</span>
-                <span>Author: {source.paper_info.author}</span>
-                <Badge variant={source.overall_score > 0.5 ? "destructive" : "outline"} className="ml-1">
+                <span className="truncate">Author: {source.paper_info.author}</span>
+                <Badge variant={source.overall_score > 0.5 ? "destructive" : "outline"} className="ml-1 flex-shrink-0">
                   {source.is_plagiarized ? "Plagiarism Detected" : "Moderate Match"}
                 </Badge>
               </CardDescription>
@@ -53,7 +53,7 @@ export function SourceCard({ source }: SourceCardProps) {
           </div>
         </CardHeader>
         <CardContent className="pb-2">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium">Overall Match</span>

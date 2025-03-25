@@ -136,12 +136,12 @@ export function PlagiarismResults({ data }: PlagiarismResultsProps) {
 
   return (
     <motion.div
-      className="space-y-6"
+      className="space-y-6 w-full"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon">
             <ArrowLeft className="h-4 w-4" />
@@ -188,7 +188,7 @@ export function PlagiarismResults({ data }: PlagiarismResultsProps) {
         <CardContent className="p-0">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="px-6 pt-4 border-b">
-              <TabsList className="h-10 w-full grid-cols-3 p-1">
+              <TabsList className="h-10 w-full grid grid-cols-3 p-1 max-w-full overflow-x-auto">
                 <TabsTrigger value="overview" className="text-sm">
                   Overview
                 </TabsTrigger>
@@ -285,13 +285,13 @@ export function PlagiarismResults({ data }: PlagiarismResultsProps) {
                 </div>
               </TabsContent>
 
-              <TabsContent value="sources" className="space-y-6 mt-0">
-                <div className="space-y-4">
+              <TabsContent value="sources" className="space-y-6 mt-0 w-full">
+                <div className="space-y-4 w-full">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-medium">All Matching Sources</h3>
                     <div className="text-sm text-muted-foreground">Showing {sources.length} sources</div>
                   </div>
-                  <div className="grid gap-4">
+                  <div className="grid gap-4 w-full">
                     {sources.map((source) => (
                       <SourceCard key={source.reference_id} source={source} />
                     ))}

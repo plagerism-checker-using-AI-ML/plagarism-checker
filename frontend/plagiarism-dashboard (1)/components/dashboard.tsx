@@ -44,8 +44,8 @@ export function Dashboard() {
               </div>
             </div>
           </header>
-          <main className="flex-1 w-full h-[calc(100%-4rem)] overflow-auto p-3 md:p-6 lg:p-8">
-            <div className="w-full max-w-7xl mx-auto">
+          <main className="flex-1 w-full h-[calc(100%-4rem)] overflow-y-auto p-3 md:p-6 lg:p-8">
+            <div className="w-full mx-auto">
               {activePage === "plagiarism" ? <PlagiarismChecker /> : <FakeDataDetection />}
             </div>
           </main>
